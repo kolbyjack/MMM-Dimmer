@@ -12,12 +12,11 @@ function ATAN(tan) { return Math.atan(tan); }
 function ATAN2(x, y) { return Math.atan2(y, x); }
 
 function setSunTime(d, t) {
-  var result = new Date();
+  var result = new Date(d.getTime());
   var h = t * 24;
   var m = (h % 1) * 60;
   var s = (m % 1) * 60;
 
-  result.setTime(d.getTime());
   result.setUTCHours(Math.floor(h), Math.floor(m), Math.floor(s));
 
   return result;
@@ -30,16 +29,22 @@ Module.register("MMM-Dimmer", {
     latitude: 28.419411,
     maxDim: 0.9,
     transitionDuration: 15 * 60 * 1000,
-    updateInterval: 30 * 1000,
+    sunriseTransitionOffset: 0,
+    sunsetTransitionOffset: 0,
   },
 
   start: function() {
     var self = this;
 
-    self.now = new Date();
     self.times = self.getSunTimes(new Date());
+    self.overlay = null;
 
-    setInterval(function() { self.updateDom(); }, self.config.updateInterval);
+    self.debugTiming = false;
+    self.debugTime = new Date();
+    self.debugTimeScale = 100;
+    self.debugTimeOffset = 17 * 60 * 60 * 1000;
+
+    self.updateDom();
   },
 
   notificationReceived: function(notification, payload, sender) {
@@ -53,46 +58,66 @@ Module.register("MMM-Dimmer", {
   getDom: function() {
     var self = this;
     var now = new Date();
-    var active = true;
     var opacity = self.config.maxDim;
-    var sunrise = self.times.sunrise.getTime();
+    var sunrise = self.times.sunrise.getTime() - self.config.sunriseTransitionOffset;
     var startToBrighten = sunrise - self.config.transitionDuration;
-    var sunset = self.times.sunset.getTime();
+    var sunset = self.times.sunset.getTime() + self.config.sunsetTransitionOffset;
     var finishDimming = sunset + self.config.transitionDuration;
+    var nextUpdate;
+
+    if (self.debugTiming) {
+      now.setTime(self.debugTime.getTime() + self.debugTimeOffset + (now.getTime() - self.debugTime.getTime()) * self.debugTimeScale);
+    }
 
     if (now.getTime() < startToBrighten) {
-      // Do nothing
+      nextUpdate = startToBrighten - now.getTime();
     } else if (now.getTime() < sunrise) {
-      opacity = self.config.maxDim * (sunrise - now.getTime()) / self.config.transitionDuration;
+      nextUpdate = sunrise - now.getTime();
+      opacity = 0;
     } else if (now.getTime() < sunset) {
-      active = false;
+      nextUpdate = sunset - now.getTime();
+      opacity = 0;
     } else if (now.getTime() < finishDimming) {
-      opacity = self.config.maxDim * (now.getTime() - sunset) / self.config.transitionDuration;
+      nextUpdate = finishDimming - now.getTime();
     } else {
-      self.times = self.getSunTimes(now);
-    }
+      var tomorrow = new Date(now.getTime());
 
-    var overlay = document.getElementById("MMM-Dimmer-overlay");
-    if (overlay === null) {
-      if (active) {
-        overlay = document.createElement("div");
-        overlay.id = "MMM-Dimmer-overlay";
-        overlay.style.background = "#000";
-        overlay.style.position = "absolute";
-        overlay.style.top = "-60px";
-        overlay.style.left = "-60px";
-        overlay.style.right = "-60px";
-        overlay.style.bottom = "-60px";
-        overlay.style["z-index"] = 9999;
-        document.body.insertBefore(overlay, document.body.firstChild);
+      self.times = self.getSunTimes(tomorrow);
+      while (now > self.times.sunrise) {
+        tomorrow.setDay(tomorrow.getDay() + 1);
+        self.times = self.getSunTimes(tomorrow);
       }
-    } else if (!active) {
-      overlay.parentNode.removeChild(overlay);
+
+      sunrise = self.times.sunrise.getTime() - self.config.sunriseTransitionOffset;
+      startToBrighten = sunrise - self.config.transitionDuration;
+      nextUpdate = startToBrighten - now.getTime();
     }
 
-    if (active) {
-      overlay.style.opacity = opacity;
+    if (self.debugTiming) {
+      nextUpdate /= self.debugTimeScale;
     }
+
+    if (self.overlay === null) {
+      self.overlay = document.createElement("div");
+      self.overlay.style.background = "#000";
+      self.overlay.style.position = "absolute";
+      self.overlay.style.top = "-60px";
+      self.overlay.style.left = "-60px";
+      self.overlay.style.right = "-60px";
+      self.overlay.style.bottom = "-60px";
+      self.overlay.style["z-index"] = 9999;
+      self.overlay.style.opacity = opacity;
+      document.body.insertBefore(self.overlay, document.body.firstChild);
+    } else if (Math.abs(self.overlay.style.opacity - opacity) > 0.001) {
+      self.overlay.style.transition = `opacity ${nextUpdate}ms linear`;
+      self.overlay.style.opacity = opacity;
+    }
+
+    if (self.debugTiming) {
+      console.log(`now=${now}; opacity=${opacity}; sunrise=${self.times.sunrise}; sunset=${self.times.sunset}; nextUpdate=${nextUpdate}`);
+    }
+
+    setTimeout(function() { self.updateDom(); }, nextUpdate);
 
     return "";
   },
