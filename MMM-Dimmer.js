@@ -106,16 +106,23 @@ Module.register("MMM-Dimmer", {
     }
 
     if (now.getTime() < startToBrighten) {
+      // Night
       nextUpdate = startToBrighten - now.getTime();
     } else if (now.getTime() < sunrise) {
+      // Pre-dawn
       nextUpdate = sunrise - now.getTime();
       opacity = 0;
     } else if (now.getTime() < sunset) {
+      // Sunrise
+      self.sendNotification("SUNRISE", { "time": sunrise });
       nextUpdate = sunset - now.getTime();
       opacity = 0;
     } else if (now.getTime() < finishDimming) {
+      // Sunset
+      self.sendNotification("SUNSET", { "time": sunset });
       nextUpdate = finishDimming - now.getTime();
     } else {
+      // Twilight
       var tomorrow = new Date(now.getTime());
 
       do {
