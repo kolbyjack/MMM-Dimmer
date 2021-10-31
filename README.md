@@ -22,7 +22,7 @@ To use this module, add it to the modules array in the `config/config.js` file:
 modules: [
   {
     module: "MMM-Dimmer",
-    position: "fullscreen_above", // Not strictly necessary
+    position: "fullscreen_above",
     config: { // See "Configuration options" for more information.
       longitude: -81.5812,
       latitude: 28.419411,

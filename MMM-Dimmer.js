@@ -143,14 +143,13 @@ Module.register("MMM-Dimmer", {
     if (self.overlay === null) {
       self.overlay = document.createElement("div");
       self.overlay.style.background = "#000";
-      self.overlay.style.position = "absolute";
-      self.overlay.style.top = "-60px";
-      self.overlay.style.left = "-60px";
-      self.overlay.style.right = "-60px";
-      self.overlay.style.bottom = "-60px";
+      self.overlay.style.position = "fixed";
+      self.overlay.style.top = "0px";
+      self.overlay.style.left = "0px";
+      self.overlay.style.right = "0px";
+      self.overlay.style.bottom = "0px";
       self.overlay.style["z-index"] = 9999;
       self.overlay.style.opacity = opacity;
-      document.body.insertBefore(self.overlay, document.body.firstChild);
     } else if (Math.abs(self.overlay.style.opacity - opacity) > 0.001) {
       self.overlay.style.transition = `opacity ${nextUpdate}ms linear`;
       self.overlay.style.opacity = opacity;
@@ -164,6 +163,6 @@ Module.register("MMM-Dimmer", {
 
     setTimeout(function() { self.updateDom(); }, nextUpdate);
 
-    return "";
+    return self.overlay;
   },
 });
