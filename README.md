@@ -28,7 +28,6 @@ modules: [
       latitude: 28.419411,
       maxDim: 0.9,
       transitionDuration: 15 * 60 * 1000,
-      updateInterval: 30 * 1000,
     }
   }
 ]
