@@ -97,9 +97,9 @@ Module.register("MMM-Dimmer", {
     var now = new Date();
     var opacity = self.config.maxDim;
     var sunrise = self.times.sunrise.getTime() - self.config.sunriseTransitionOffset;
-    var startToBrighten = sunrise - self.config.transitionDuration;
+    var startToBrighten = sunrise - (self.config.sunriseTransitionDuration || self.config.transitionDuration);
     var sunset = self.times.sunset.getTime() + self.config.sunsetTransitionOffset;
-    var finishDimming = sunset + self.config.transitionDuration;
+    var finishDimming = sunset + (self.config.sunsetTransitionDuration || self.config.transitionDuration);
     var nextUpdate;
 
     if (self.debugTiming) {

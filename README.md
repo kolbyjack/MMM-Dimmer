@@ -42,6 +42,8 @@ The following properties can be configured:
 |---|---|---|
 |`longitude`<br/>`latitude`|Cinderella's Castle at WDW|The coordinates to use when calculating sunrise and sunset times.|
 |`maxDim`|`0.9`|How much to lower the opacity of the screen when fully dimmed (higher is dimmer, 1.0 will turn the screen completely black).|
-|`transitionDuration`|`15 * 60 * 1000`|How long to take (in ms) to gradually dim the screen after sunset.|
-|`sunriseTransitionOffset`|`0`|How much (in ms) to offset brightening the display from the calculated sunrise time. Positive values will start brightening the screen earlier.|
-|`sunsetTransitionOffset`|`0`|How much (in ms) to offset dimming the display from the calculated sunset time. Positive values will start dimming the screen later.|
+|`transitionDuration`|`15 * 60 * 1000`|How long to take (in ms) to gradually dim the screen after sunset, and how long before sunrise to start brightening the screen.|
+|`sunriseTransitionDuration`|`transitionDuration`|How long before sunrise (in ms) to start gradually brightening the screen.|
+|`sunriseTransitionOffset`|`0`|How much (in ms) to offset the calculated sunrise time. Positive values will start brightening the screen earlier.|
+|`sunriseTransitionDuration`|`transitionDuration`|How long to take (in ms) to gradually dim the screen after sunset.|
+|`sunsetTransitionOffset`|`0`|How much (in ms) to offset the calculated sunset time. Positive values will start dimming the screen later.|
