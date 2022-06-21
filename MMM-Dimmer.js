@@ -72,15 +72,16 @@ Module.register("MMM-Dimmer", {
   start: function() {
     var self = this;
 
-    self.times = getSunTimes(new Date(), self.config.latitude, self.config.longitude);
-    self.overlay = null;
-
     self.debugTiming = false;
     self.debugTime = new Date();
     self.debugTimeScale = 100;
     self.debugTimeOffset = 17 * 60 * 60 * 1000;
 
-    self.updateDom();
+    self.times = getSunTimes(new Date(), self.config.latitude, self.config.longitude);
+
+    const state = self.getCurrentState();
+    self.overlay = self.createOverlay(state.opacity);
+    setTimeout(() => self.updateOverlay(), state.nextUpdate);
   },
 
   notificationReceived: function(notification, payload, sender) {
@@ -91,7 +92,7 @@ Module.register("MMM-Dimmer", {
     // Do nothing
   },
 
-  getDom: function() {
+  getCurrentState: function() {
     var self = this;
     var now = new Date();
     var opacity = self.config.maxDim;
@@ -140,29 +141,45 @@ Module.register("MMM-Dimmer", {
       nextUpdate /= self.debugTimeScale;
     }
 
-    if (self.overlay === null) {
-      self.overlay = document.createElement("div");
-      self.overlay.style.background = "#000";
-      self.overlay.style.position = "fixed";
-      self.overlay.style.top = "0px";
-      self.overlay.style.left = "0px";
-      self.overlay.style.right = "0px";
-      self.overlay.style.bottom = "0px";
-      self.overlay.style["z-index"] = 9999;
-      self.overlay.style.opacity = opacity;
-    } else if (Math.abs(self.overlay.style.opacity - opacity) > 0.001) {
-      self.overlay.style.transition = `opacity ${nextUpdate}ms linear`;
-      self.overlay.style.opacity = opacity;
-    }
-
     if (self.debugTiming) {
       function z(n) { return (n < 10) ? `0${n}` : n; }
       function fd(d) { if (!(d instanceof Date)) { d = new Date(d); } return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; }
       console.log(`now=${fd(now)}; opacity=${opacity}; sunrise=${fd(sunrise)}; sunset=${fd(sunset)}; nextUpdate=${fd(now.getTime() + nextUpdate)}`);
     }
 
-    setTimeout(function() { self.updateDom(); }, nextUpdate);
+    return {
+      opacity: opacity,
+      nextUpdate: nextUpdate,
+    };
+  },
 
-    return self.overlay;
+  createOverlay: function(opacity) {
+    const overlay = document.createElement("div");
+
+    overlay.style.background = "#000";
+    overlay.style.position = "fixed";
+    overlay.style.top = "0px";
+    overlay.style.left = "0px";
+    overlay.style.right = "0px";
+    overlay.style.bottom = "0px";
+    overlay.style.zIndex = 9999;
+    overlay.style.transitionTimingFunction = "linear";
+    overlay.style.opacity = opacity;
+
+    return overlay;
+  },
+
+  updateOverlay: function() {
+    var self = this;
+    const state = self.getCurrentState();
+
+    self.overlay.style.transitionDuration = `${state.nextUpdate}ms`;
+    self.overlay.style.opacity = state.opacity;
+
+    setTimeout(() => self.updateOverlay(), state.nextUpdate);
+  },
+
+  getDom: function() {
+    return this.overlay;
   },
 });
