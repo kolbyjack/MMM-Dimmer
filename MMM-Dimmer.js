@@ -67,16 +67,16 @@ Module.register("MMM-Dimmer", {
     transitionDuration: 15 * 60 * 1000,
     sunriseTransitionOffset: 0,
     sunsetTransitionOffset: 0,
+
+    debugTiming: false,
+    debugTimeScale: 720,
+    debugTimeOffset: 0,
   },
 
   start: function() {
     var self = this;
 
-    self.debugTiming = false;
-    self.debugTime = new Date();
-    self.debugTimeScale = 100;
-    self.debugTimeOffset = 17 * 60 * 60 * 1000;
-
+    self.debugBaseTime = (new Date()).getTime() + self.config.debugTimeOffset;
     self.times = getSunTimes(new Date(), self.config.latitude, self.config.longitude);
 
     const state = self.getCurrentState();
@@ -102,8 +102,8 @@ Module.register("MMM-Dimmer", {
     var finishDimming = sunset + (self.config.sunsetTransitionDuration || self.config.transitionDuration);
     var nextUpdate;
 
-    if (self.debugTiming) {
-      now.setTime(self.debugTime.getTime() + self.debugTimeOffset + (now.getTime() - self.debugTime.getTime()) * self.debugTimeScale);
+    if (self.config.debugTiming) {
+      now.setTime(self.debugBaseTime + (now.getTime() - self.debugBaseTime) * self.config.debugTimeScale);
     }
 
     if (now.getTime() < startToBrighten) {
@@ -137,11 +137,9 @@ Module.register("MMM-Dimmer", {
       nextUpdate = startToBrighten - now.getTime();
     }
 
-    if (self.debugTiming) {
-      nextUpdate /= self.debugTimeScale;
-    }
+    if (self.config.debugTiming) {
+      nextUpdate /= self.config.debugTimeScale;
 
-    if (self.debugTiming) {
       function z(n) { return (n < 10) ? `0${n}` : n; }
       function fd(d) { if (!(d instanceof Date)) { d = new Date(d); } return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; }
       console.log(`now=${fd(now)}; opacity=${opacity}; sunrise=${fd(sunrise)}; sunset=${fd(sunset)}; nextUpdate=${fd(now.getTime() + nextUpdate)}`);

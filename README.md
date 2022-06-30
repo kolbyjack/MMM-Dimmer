@@ -37,7 +37,6 @@ modules: [
 
 The following properties can be configured:
 
-
 |Option|Default|Description|
 |---|---|---|
 |`longitude`<br/>`latitude`|Cinderella's Castle at WDW|The coordinates to use when calculating sunrise and sunset times.|
@@ -47,3 +46,11 @@ The following properties can be configured:
 |`sunriseTransitionOffset`|`0`|How much (in ms) to offset the calculated sunrise time. Positive values will start brightening the screen earlier.|
 |`sunriseTransitionDuration`|`transitionDuration`|How long to take (in ms) to gradually dim the screen after sunset.|
 |`sunsetTransitionOffset`|`0`|How much (in ms) to offset the calculated sunset time. Positive values will start dimming the screen later.|
+
+There are also additional settings for debugging:
+
+|Option|Default|Description|
+|---|---|---|
+|`debugTiming`|`false`|Whether to enable debug mode for timing issues.|
+|`debugTimeScale`|`720`|How to scale the passage of time during debugging.  720 = one day every two minutes.|
+|`debugTimeOffset`|`0`|How much to offset the current time at module startup.|
