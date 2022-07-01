@@ -76,11 +76,14 @@ Module.register("MMM-Dimmer", {
   start: function() {
     var self = this;
 
-    self.debugBaseTime = (new Date()).getTime() + self.config.debugTimeOffset;
+    self.debugBaseTime = (new Date()).getTime();
     self.times = getSunTimes(new Date(), self.config.latitude, self.config.longitude);
 
     const state = self.getCurrentState();
-    self.overlay = self.createOverlay(state.opacity);
+    self.overlay = self.createOverlay(state.currentOpacity);
+    if (state.currentOpacity !== state.targetOpacity) {
+      state.nextUpdate = 0;
+    }
     setTimeout(() => self.updateOverlay(), state.nextUpdate);
   },
 
@@ -93,38 +96,46 @@ Module.register("MMM-Dimmer", {
   },
 
   getCurrentState: function() {
-    var self = this;
-    var now = new Date();
-    var opacity = self.config.maxDim;
-    var sunrise = self.times.sunrise.getTime() - self.config.sunriseTransitionOffset;
-    var startToBrighten = sunrise - (self.config.sunriseTransitionDuration || self.config.transitionDuration);
-    var sunset = self.times.sunset.getTime() + self.config.sunsetTransitionOffset;
-    var finishDimming = sunset + (self.config.sunsetTransitionDuration || self.config.transitionDuration);
-    var nextUpdate;
+    const self = this;
+    const now = new Date();
+    const sunriseTransitionDuration = (self.config.sunriseTransitionDuration || self.config.transitionDuration);
+    const sunsetTransitionDuration = (self.config.sunsetTransitionDuration || self.config.transitionDuration);
+    const sunset = self.times.sunset.getTime() + self.config.sunsetTransitionOffset;
+    const finishDimming = sunset + sunsetTransitionDuration;
+    let sunrise = self.times.sunrise.getTime() - self.config.sunriseTransitionOffset;
+    let startToBrighten = sunrise - sunriseTransitionDuration;
+    const result = {
+      nextUpdate: undefined,
+      currentOpacity: self.config.maxDim,
+      targetOpacity: self.config.maxDim,
+    };
 
     if (self.config.debugTiming) {
-      now.setTime(self.debugBaseTime + (now.getTime() - self.debugBaseTime) * self.config.debugTimeScale);
+      now.setTime(self.debugBaseTime + self.config.debugTimeOffset + (now.getTime() - self.debugBaseTime) * self.config.debugTimeScale);
     }
 
     if (now.getTime() < startToBrighten) {
       // Night
-      nextUpdate = startToBrighten - now.getTime();
+      result.nextUpdate = startToBrighten - now.getTime();
     } else if (now.getTime() < sunrise) {
-      // Pre-dawn
-      nextUpdate = sunrise - now.getTime();
-      opacity = 0;
+      // Dawn
+      result.nextUpdate = sunrise - now.getTime();
+      result.currentOpacity *= result.nextUpdate / sunriseTransitionDuration;
+      result.targetOpacity = 0;
     } else if (now.getTime() < sunset) {
-      // Sunrise
+      // Day
       self.sendNotification("SUNRISE", { "time": sunrise });
-      nextUpdate = sunset - now.getTime();
-      opacity = 0;
+      result.nextUpdate = sunset - now.getTime();
+      result.currentOpacity = 0;
+      result.targetOpacity = 0;
     } else if (now.getTime() < finishDimming) {
       // Sunset
       self.sendNotification("SUNSET", { "time": sunset });
-      nextUpdate = finishDimming - now.getTime();
+      result.nextUpdate = finishDimming - now.getTime();
+      result.currentOpacity *= 1 - result.nextUpdate / sunriseTransitionDuration;
     } else {
-      // Twilight
-      var tomorrow = new Date(now.getTime());
+      // Night
+      const tomorrow = new Date(now.getTime());
 
       do {
         self.times = getSunTimes(tomorrow, self.config.latitude, self.config.longitude);
@@ -133,28 +144,25 @@ Module.register("MMM-Dimmer", {
       } while (now > self.times.sunrise);
 
       sunrise = self.times.sunrise.getTime() - self.config.sunriseTransitionOffset;
-      startToBrighten = sunrise - self.config.transitionDuration;
-      nextUpdate = startToBrighten - now.getTime();
+      startToBrighten = sunrise - sunriseTransitionDuration;
+      result.nextUpdate = startToBrighten - now.getTime();
     }
 
     if (self.config.debugTiming) {
-      nextUpdate /= self.config.debugTimeScale;
+      result.nextUpdate = (result.nextUpdate / self.config.debugTimeScale) | 0;
 
       function z(n) { return (n < 10) ? `0${n}` : n; }
       function fd(d) { if (!(d instanceof Date)) { d = new Date(d); } return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; }
-      console.log(`now=${fd(now)}; opacity=${opacity}; sunrise=${fd(sunrise)}; sunset=${fd(sunset)}; nextUpdate=${fd(now.getTime() + nextUpdate)}`);
+      console.log(`now=${fd(now)}; current opacity=${result.currentOpacity}; target opacity=${result.targetOpacity}; sunrise=${fd(sunrise)}; sunset=${fd(sunset)}; nextUpdate=${fd((new Date()).getTime() + result.nextUpdate)} (${result.nextUpdate * 0.001}s)`);
     }
 
-    return {
-      opacity: opacity,
-      nextUpdate: nextUpdate,
-    };
+    return result;
   },
 
   createOverlay: function(opacity) {
     const overlay = document.createElement("div");
 
-    overlay.style.background = "#000";
+    overlay.style.backgroundColor = `rgba(0, 0, 0, ${opacity})`;
     overlay.style.position = "fixed";
     overlay.style.top = "0px";
     overlay.style.left = "0px";
@@ -162,7 +170,6 @@ Module.register("MMM-Dimmer", {
     overlay.style.bottom = "0px";
     overlay.style.zIndex = 9999;
     overlay.style.transitionTimingFunction = "linear";
-    overlay.style.opacity = opacity;
 
     return overlay;
   },
@@ -172,8 +179,7 @@ Module.register("MMM-Dimmer", {
     const state = self.getCurrentState();
 
     self.overlay.style.transitionDuration = `${state.nextUpdate}ms`;
-    self.overlay.style.opacity = state.opacity;
-
+    self.overlay.style.backgroundColor = `rgba(0, 0, 0, ${state.targetOpacity})`;
     setTimeout(() => self.updateOverlay(), state.nextUpdate);
   },
 
