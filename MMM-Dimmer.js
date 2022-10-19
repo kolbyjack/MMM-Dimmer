@@ -170,6 +170,7 @@ Module.register("MMM-Dimmer", {
     overlay.style.bottom = "0px";
     overlay.style.zIndex = 9999;
     overlay.style.transitionTimingFunction = "linear";
+    overlay.style.pointerEvents = "none";
 
     return overlay;
   },
